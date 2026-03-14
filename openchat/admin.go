@@ -9,7 +9,7 @@ import (
 
 // PinMessage pins a message in an OpenChat room.
 func (oc *OpenChat) PinMessage(chatID, messageID string) error {
-	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChatPin), map[string]string{
+	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChat), map[string]string{
 		"chatId":    chatID,
 		"messageId": messageID,
 	})
@@ -17,7 +17,7 @@ func (oc *OpenChat) PinMessage(chatID, messageID string) error {
 
 // SetNotification enables or disables notifications for an OpenChat room.
 func (oc *OpenChat) SetNotification(chatID string, enabled bool) error {
-	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChatInfo)+"/notification", map[string]interface{}{
+	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChat)+"/notification", map[string]interface{}{
 		"chatId":  chatID,
 		"enabled": enabled,
 	})
@@ -25,7 +25,7 @@ func (oc *OpenChat) SetNotification(chatID string, enabled bool) error {
 
 // GetChatInfo returns metadata about an OpenChat room.
 func (oc *OpenChat) GetChatInfo(chatID string) (*api.OpenChatInfo, error) {
-	req, err := http.NewRequest("GET", oc.resolveURL(api.EndpointOpenChatInfo)+"?chatId="+chatID, nil)
+	req, err := http.NewRequest("GET", oc.resolveURL(api.EndpointOpenChat)+"?chatId="+chatID, nil)
 	if err != nil {
 		return nil, err
 	}

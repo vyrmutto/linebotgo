@@ -48,7 +48,7 @@ type operation struct {
 }
 
 func (c *Client) fetchOps(ctx context.Context, revision int64) ([]operation, error) {
-	url := api.EndpointFetchOps
+	url := api.EndpointPoll
 	if c.baseURL != "" {
 		url = c.baseURL + "/fetchOps"
 	}

@@ -32,7 +32,7 @@ func (oc *OpenChat) resolveURL(endpoint string) string {
 
 // Search finds OpenChat rooms matching the query string.
 func (oc *OpenChat) Search(query string) ([]api.OpenChatInfo, error) {
-	req, err := http.NewRequest("GET", oc.resolveURL(api.EndpointOpenChatSearch), nil)
+	req, err := http.NewRequest("GET", oc.resolveURL(api.EndpointOpenChat), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -58,17 +58,17 @@ func (oc *OpenChat) Search(query string) ([]api.OpenChatInfo, error) {
 
 // Join joins an OpenChat room by ID.
 func (oc *OpenChat) Join(chatID string) error {
-	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChatJoin), map[string]string{"chatId": chatID})
+	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChat), map[string]string{"chatId": chatID})
 }
 
 // Leave leaves an OpenChat room.
 func (oc *OpenChat) Leave(chatID string) error {
-	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChatLeave), map[string]string{"chatId": chatID})
+	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChat), map[string]string{"chatId": chatID})
 }
 
 // SendText sends a text message to an OpenChat room.
 func (oc *OpenChat) SendText(chatID, text string) error {
-	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChatSend), map[string]string{
+	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChat), map[string]string{
 		"chatId": chatID,
 		"text":   text,
 	})

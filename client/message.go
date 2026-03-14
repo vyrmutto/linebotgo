@@ -14,7 +14,7 @@ func (c *Client) resolveSendURL() string {
 	if c.baseURL != "" {
 		return c.baseURL + "/send"
 	}
-	return api.EndpointSendMessage
+	return api.EndpointTalk
 }
 
 // SendText sends a plain text message to a LINE user or group.
@@ -40,7 +40,7 @@ func (c *Client) dispatchMessage(msg *Message) {
 
 // GetContacts returns a list of contact MIDs.
 func (c *Client) GetContacts() ([]string, error) {
-	url := api.EndpointGetContacts
+	url := api.EndpointTalk
 	if c.baseURL != "" {
 		url = c.baseURL + "/contacts"
 	}

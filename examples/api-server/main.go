@@ -70,7 +70,7 @@ func loadOrLogin() *auth.Token {
 	}
 
 	c := transport.NewHTTPClient()
-	tok, err := auth.EmailLogin(c, api.EndpointEmailLogin, email, password)
+	tok, err := auth.EmailLogin(c, api.EndpointLogin, email, password)
 	if err != nil {
 		log.Fatalf("login failed: %v", err)
 	}

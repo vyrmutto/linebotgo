@@ -9,7 +9,7 @@ import (
 
 // GetProfile returns profile information for a given LINE MID.
 func (c *Client) GetProfile(mid string) (*api.Contact, error) {
-	url := api.EndpointGetProfile + "?mid=" + mid
+	url := api.EndpointTalk + "?mid=" + mid
 	if c.baseURL != "" {
 		url = c.baseURL + "/profile?mid=" + mid
 	}

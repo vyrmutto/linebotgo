@@ -9,7 +9,7 @@ import (
 
 // GetMembers returns all members of an OpenChat room.
 func (oc *OpenChat) GetMembers(chatID string) ([]api.OpenChatMember, error) {
-	req, err := http.NewRequest("GET", oc.resolveURL(api.EndpointOpenChatMembers)+"?chatId="+chatID, nil)
+	req, err := http.NewRequest("GET", oc.resolveURL(api.EndpointOpenChat)+"?chatId="+chatID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (oc *OpenChat) GetMembers(chatID string) ([]api.OpenChatMember, error) {
 
 // Kick removes a member from an OpenChat room.
 func (oc *OpenChat) Kick(chatID, memberMID string) error {
-	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChatKick), map[string]string{
+	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChat), map[string]string{
 		"chatId": chatID,
 		"mid":    memberMID,
 	})
@@ -39,7 +39,7 @@ func (oc *OpenChat) Kick(chatID, memberMID string) error {
 
 // Ban bans a member from an OpenChat room.
 func (oc *OpenChat) Ban(chatID, memberMID string) error {
-	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChatBan), map[string]string{
+	return oc.c.PostJSON(oc.resolveURL(api.EndpointOpenChat), map[string]string{
 		"chatId": chatID,
 		"mid":    memberMID,
 	})
