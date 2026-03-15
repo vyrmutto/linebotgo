@@ -10,11 +10,11 @@ import (
 
 func TestEndpointsHaveBaseURL(t *testing.T) {
 	endpoints := []string{
-		api.EndpointEmailLogin,
-		api.EndpointFetchOps,
-		api.EndpointSendMessage,
-		api.EndpointOpenChatSearch,
-		api.EndpointOpenChatJoin,
+		api.EndpointLogin,
+		api.EndpointNewRegistration,
+		api.EndpointTalk,
+		api.EndpointPoll,
+		api.EndpointOpenChat,
 	}
 	for _, ep := range endpoints {
 		assert.True(t, strings.HasPrefix(ep, api.BaseURL),

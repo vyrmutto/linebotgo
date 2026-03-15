@@ -18,11 +18,12 @@ func (c *Client) resolveSendURL() string {
 }
 
 // SendText sends a plain text message to a LINE user or group.
+// Uses ContentType NONE (0) which is the Thrift wire value for plain text.
 func (c *Client) SendText(to, text string) error {
 	return c.PostJSON(c.resolveSendURL(), map[string]interface{}{
-		"to":   to,
-		"text": text,
-		"type": string(api.MessageTypeText),
+		"to":          to,
+		"text":        text,
+		"contentType": int(api.ContentTypeNone),
 	})
 }
 
