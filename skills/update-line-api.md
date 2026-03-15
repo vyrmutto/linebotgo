@@ -14,6 +14,10 @@ Use this skill when:
 **METHOD: APK decompilation only.** Never guess, infer, or copy from external sources.
 Wrong constants produce silent integration failures (valid binary, wrong semantics).
 
+**IMPORTANT:** Obfuscated class names (`lv1/Q6.java`, `Vt1/d.java`, `qZ/C46197f.java`, etc.)
+change with every APK build. Always find files by grep-ing for stable string content,
+not by filename. Only asset paths and full-package class names are stable across builds.
+
 ---
 
 ## Step 0 — Download and Decompile the New APK
@@ -22,20 +26,20 @@ Wrong constants produce silent integration failures (valid binary, wrong semanti
 # Check current version in transport/http.go
 grep LineAppVersion transport/http.go
 
-# Decompile the new APK (replace path with actual APK location)
+# Decompile the new APK
 jadx -d /tmp/line_decompile /path/to/line.apk
 
-# Verify the app version from APK manifest
+# Verify the app version from the APK manifest
 aapt dump badging /path/to/line.apk | grep versionName
 ```
 
-The decompiled sources will be at `/tmp/line_decompile/sources/`.
+Decompiled sources will be at `/tmp/line_decompile/sources/`.
 
 ---
 
 ## Step 1 — Extract Server Hostnames
 
-**Source file:** `assets/default-connection-info/default.json`
+**Stable asset path — filename does not change between builds.**
 
 ```bash
 cat "/tmp/line_decompile/sources/assets/default-connection-info/default.json"
@@ -49,49 +53,68 @@ Look for:
 
 ## Step 2 — Extract All Service Endpoint Paths
 
-**Source file:** `zi/EnumC55943a.java`
+**Find the service path enum by searching for known stable path strings:**
 
 ```bash
-grep 'new EnumC55943a' /tmp/line_decompile/sources/zi/EnumC55943a.java
+# The enum contains all Thrift service paths as string literals
+grep -rn '"/S4"\|"/P4"\|"/SQ1"\|"LONG_POLLING"\|"NORMAL"' \
+  /tmp/line_decompile/sources/ | grep -v '.class:' | head -5
+```
+
+This will reveal the file (e.g. `zi/EnumC55943a.java` or whatever it's named this build).
+Then dump the full file to extract all entries:
+
+```bash
+# Replace FILE with the path found above
+grep 'new EnumC' FILE
 ```
 
 Each entry has the form:
 ```java
-new EnumC55943a(INDEX, "SERVICE_NAME", "/path", timeoutMs)
+new EnumCXXXXX(INDEX, "SERVICE_NAME", "/path", timeoutMs)
 ```
 
 Map every path to the appropriate constant in `api/endpoints.go`.
-Also check `zi/V.java` for secondary device login paths (`/Q`, `/LF1`):
+
+**Also find the secondary device login paths:**
 
 ```bash
-grep 'prefixUrl\|SECONDARY_DEVICE' /tmp/line_decompile/sources/zi/V.java
+# Search for the secondary device login enum by its stable string content
+grep -rn '"verify_pin"\|SECONDARY_DEVICE_LOGIN' \
+  /tmp/line_decompile/sources/ | grep -v '.class:' | head -5
 ```
+
+Look for `prefixUrl` values `/Q` and `/LF1`.
 
 ---
 
 ## Step 3 — Extract HTTP Header Constants
 
-**Source file:** `Vt1/d.java`
+**Find the X-Line-Application construction logic:**
 
 ```bash
-grep -A5 'strD\|versionName\|Line/\|Android OS' /tmp/line_decompile/sources/Vt1/d.java | head -40
+# The header is built by concatenating device type + version + "Android OS" + Build.VERSION.RELEASE
+grep -rn 'Android OS\|Build.VERSION.RELEASE\|X-Line-Application' \
+  /tmp/line_decompile/sources/ | grep -v '.class:' | grep -v 'test\|Test' | head -10
 ```
 
-- Method `i(Context)` → X-Line-Application format: `strD + "\t" + appVersion + "\tAndroid OS\t" + Build.VERSION.RELEASE`
-- Method `l(Context)` → User-Agent: `"Line/" + versionName`
+Reveals the file containing method `i()`. Open it and read:
+- The format string: `strD + "\t" + appVersion + "\tAndroid OS\t" + Build.VERSION.RELEASE`
 
-**Source file:** `qZ/C46197f.java` (device type string)
+**Find the device type string:**
 
 ```bash
-grep -A10 'public final String d()' /tmp/line_decompile/sources/qZ/C46197f.java
+# Search for the literal "ANDROID" device type constant
+grep -rn '"ANDROIDSECONDARY"\|"ANDROID"' \
+  /tmp/line_decompile/sources/ | grep -v '.class:' | grep -v 'import\|//\|test' | head -10
 ```
 
-Returns `"ANDROID"` for primary device, `"ANDROIDSECONDARY"` for secondary.
+Should return `"ANDROID"` for primary device and `"ANDROIDSECONDARY"` for secondary.
 
 Update in `transport/http.go`:
-- `LineAppVersion` — from `aapt dump badging` versionName
-- `LineUserAgent` — derived from LineAppVersion (`"Line/" + version`)
-- `LineApplication` — derived from LineAppVersion + LineSystemName + LineAndroidOSVersion
+- `LineAppVersion` — from `aapt dump badging` versionName (Step 0)
+- `LineUserAgent` — derived: `"Line/" + LineAppVersion`
+- `LineApplication` — derived from LineAppVersion + "Android OS" + LineAndroidOSVersion
 
 **Note:** `LineAndroidOSVersion` is `Build.VERSION.RELEASE` at runtime — it is NOT in the APK.
 Keep the default as a common recent Android version. Never hardcode a specific device's version.
@@ -100,43 +123,51 @@ Keep the default as a common recent Android version. Never hardcode a specific d
 
 ## Step 4 — Extract Thrift Struct Field IDs
 
-Domain model structs are in the `lv1/` package (obfuscated class names).
-Find them by searching for known field names:
+Structs are in an obfuscated package (currently `lv1/`). Find them by known field names:
 
 ```bash
-# Find Message struct
-grep -rn '"id"\|"text"\|"contentType"\|"toType"' /tmp/line_decompile/sources/lv1/ | grep 'jy1.c f' | head -20
+# Find Message struct — search for its stable Thrift field names
+grep -rn '"text"\|"contentType"\|"toType"\|"createdTime"' \
+  /tmp/line_decompile/sources/ | grep 'jy1.c f\|new jy1.c' | head -10
 
 # Find Operation struct
-grep -rn '"revision"\|"type"\|"param1"' /tmp/line_decompile/sources/lv1/ | grep 'jy1.c f' | head -20
+grep -rn '"revision"\|"param1"\|"param2"' \
+  /tmp/line_decompile/sources/ | grep 'new jy1.c' | head -10
 
 # Find SyncRequest struct
-grep -rn '"lastRevision"\|"count"\|"lastGlobalRevision"' /tmp/line_decompile/sources/lv1/ | head -10
+grep -rn '"lastRevision"\|"lastGlobalRevision"\|"fullSyncRequestReason"' \
+  /tmp/line_decompile/sources/ | grep 'new jy1.c' | head -10
+
+# Find Profile struct
+grep -rn '"displayName"\|"pictureStatus"\|"statusMessage"' \
+  /tmp/line_decompile/sources/ | grep 'new jy1.c' | head -10
 ```
 
-Each field is declared as:
+Each Thrift field is declared as:
 ```java
 public static final jy1.c fXXX = new jy1.c("fieldName", (byte) WIRE_TYPE, FIELD_ID);
 ```
 
-Thrift wire types: 2=BOOL, 3=I8, 6=I16, 8=I32, 10=I64, 11=STRING, 12=STRUCT, 13=MAP, 14=SET, 15=LIST
+Thrift wire types: 2=BOOL, 3=I8, 6=I16, **8=I32**, **10=I64**, **11=STRING**, **12=STRUCT**, 13=MAP, 14=SET, 15=LIST
 
-Update structs in `api/types.go` with new field IDs.
+Once you find the file, open it to read all field IDs. Update structs in `api/types.go`.
 
 ---
 
 ## Step 5 — Check for New Enum Values
 
 ```bash
-# OpType enum (operation types in fetchOperations stream)
-wc -l /tmp/line_decompile/sources/lv1/Q6.java
-grep -c 'OpType\|= OpType' /Users/vysina/my_workspace/linebotgo/api/types.go
+# Find OpType enum — search for stable value names
+grep -rn '"END_OF_OPERATION"\|"RECEIVE_MESSAGE"\|"SEND_MESSAGE"' \
+  /tmp/line_decompile/sources/ | grep -v '.class:' | head -5
+# Then open that file and count entries vs current api/types.go
 
-# ContentType enum
-grep -c 'new.*EnumC\|= new' /tmp/line_decompile/sources/lv1/H3.java
+# Find ContentType enum
+grep -rn '"NONE"\|"IMAGE"\|"VIDEO"\|"AUDIO"' \
+  /tmp/line_decompile/sources/ | grep 'new jy1.c\|ContentType\|getValue' | head -10
 ```
 
-Compare counts. If the APK has more entries, add the new ones to `api/types.go`.
+If the APK has more enum entries, add them to `api/types.go`.
 Wire integer values MUST be read directly from the Java source — never assumed.
 
 ---
@@ -164,15 +195,28 @@ Fix all failures before committing.
 ## Step 8 — Commit
 
 ```bash
-git add api/endpoints.go api/types.go transport/http.go transport/http_test.go
+git add api/endpoints.go api/types.go transport/http.go
 git commit -m "feat: update LINE API constants for APK vX.XX.X"
 ```
 
 ---
 
-## Source File Map (quick reference)
+## Stable vs Obfuscated Paths
 
-| What | APK source file |
+| Type | Example | Stable? |
+|---|---|---|
+| Asset files | `assets/default-connection-info/default.json` | ✅ stable |
+| Full package classes | `com/linecorp/square/protocol/thrift/common/Square.java` | ✅ stable |
+| Full package classes | `jp/naver/line/android/thrift/client/impl/LegacyTalkServiceClientImpl.java` | ✅ stable |
+| Obfuscated short classes | `lv1/Q6.java`, `Vt1/d.java`, `qZ/C46197f.java`, `zi/EnumC55943a.java` | ❌ changes every build |
+
+Always locate obfuscated files by grep-ing for stable string content inside them,
+not by filename. The source file map below shows which files were used **last build**
+as a starting point, but verify each one before trusting it.
+
+## Source File Map (from APK 15.15.1 — verify on each new build)
+
+| What | Last known file |
 |---|---|
 | Server hostnames | `assets/default-connection-info/default.json` |
 | All Thrift service paths | `zi/EnumC55943a.java` |
